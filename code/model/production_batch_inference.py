@@ -42,6 +42,9 @@ class ProductionBatchProcessor:
         
         self.context = self.engine.create_execution_context()
         
+        # Create CUDA stream for asynchronous execution
+        self.stream = cuda.Stream()
+        
         # Get tensor info
         self.input_name = None
         self.output_names = []
@@ -211,19 +214,22 @@ class ProductionBatchProcessor:
         input_shape = (actual_batch_size, 3, 960, 960)
         self.context.set_input_shape(self.input_name, input_shape)
         
-        # Copy to GPU and execute
-        cuda.memcpy_htod(self.d_input, self.h_input[:actual_batch_size])
+        # Copy to GPU and execute (asynchronous)
+        cuda.memcpy_htod_async(self.d_input, self.h_input[:actual_batch_size], self.stream)
         
         # Set tensor addresses
         self.context.set_tensor_address(self.input_name, int(self.d_input))
         for output_alloc in self.output_allocations:
             self.context.set_tensor_address(output_alloc['name'], int(output_alloc['device']))
         
-        # Execute inference
-        success = self.context.execute_async_v3(0)
+        # Execute inference with proper stream
+        success = self.context.execute_async_v3(self.stream.handle)
         
         if not success:
             return []
+        
+        # Synchronize before copying results
+        self.stream.synchronize()
         
         # Get main output (usually the largest - detection results)
         main_output = max(self.output_allocations, key=lambda x: np.prod(x['shape']))
@@ -402,7 +408,7 @@ def main():
     """Main function with command line interface"""
     parser = argparse.ArgumentParser(description="Production Batch Video Processing")
     parser.add_argument("video_path", help="Path to input video file")
-    parser.add_argument("--engine", default="models/auklab_model_xlarge_combined_4564_v1_batch.trt", 
+    parser.add_argument("--engine", default="models/auklab_model_xlarge_combined_4564_v1_clean.trt", 
                        help="Path to TensorRT engine")
     parser.add_argument("--output", help="Output CSV file (auto-generated if not specified)")
     parser.add_argument("--batch-size", type=int, default=21, 
@@ -469,7 +475,7 @@ if __name__ == "__main__":
             
             try:
                 processor = ProductionBatchProcessor(
-                    "models/auklab_model_xlarge_combined_4564_v1_batch.trt", 
+                    "models/auklab_model_xlarge_combined_4564_v1_clean.trt", 
                     batch_size=21
                 )
                 
