@@ -1,21 +1,25 @@
 import pandas as pd
 from pathlib import Path 
 from ultralytics import YOLO
+import av # PyAV for video processing
 import os 
+import torch
 import sys
 sys.path.append("/home/jonas/Documents/vscode/Eider_detection/code/generic_functions/") # Sprattus
-#from functions import send_email
+from functions import send_email
 
 # Input arguments (run device and station)
 device = sys.argv[1]
 stat = sys.argv[2]
-#password = input("Please type gmail password ... ")
+password = input("Please type gmail password ... ")
+version = input("Please type model version (eg 4564)... ")
+
 datelimit = pd.to_datetime("2019-05-11 12:00:00") # Start date...
 
 # Send start email
-#now = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
-#filename = "none"
-#send_email(password, now, device, stat, filename, start = True)
+now = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
+filename = "none"
+send_email(password, now, device, stat, filename, start = True)
 
 # Settings for batch processing
 frame_skip = 25  # Process every 25th frame
@@ -23,7 +27,7 @@ batch_size = 32  # Send 32 frames at a time to the GPU
 
 
 # Load a pretrained YOLO model
-modelpath = Path("models/auklab_model_combined_xlarge_4211_v1.pt")
+modelpath = Path(f"models/auklab_model_xlarge_combined_{version}_v1.pt")
 model = YOLO(modelpath).to(f'cuda:{device}')
 modelname = modelpath.stem
 output_dir1 = f'../../../../../../mnt/BSP_NAS2_work/auklab_model/inference/2024/{modelname}/'
@@ -126,8 +130,8 @@ for vid in vids:
 
 # Send end email
 now = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
-#send_email(password, now, device, stat, filename, start = False)
+send_email(password, now, device, stat, filename, start = False)
 
 
 # Run example 
-# python3 code/model/run_inference_nth_decode.py 1 "FAR3"
+#python3 code/model/run_inference_nth_decode.py 1 "TRI3"
