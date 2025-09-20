@@ -8,6 +8,8 @@
 .DS_Store
 
 # Image files
+*.trt
+*.onnx
 *.png
 *.gif
 *.jpg
