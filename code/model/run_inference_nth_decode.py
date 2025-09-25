@@ -61,6 +61,13 @@ for vid in vids:
         name = filename.split("_")
         time = name[-2]+" "+name[-1][0:8]
         time = time.replace(".", ":")
+
+        if len(time) != 19:
+            print(f"Time string not correct length for {filename}")
+            continue
+
+        else:
+            time = time[0:19]
         station = stat
 
         starttime = pd.to_datetime(time)
